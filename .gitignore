@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+*.pem
+.circle/
+*recovery*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+agent/data/
+contracts/out
+contracts/cache
+traces.jsonl
+console.jsonl
