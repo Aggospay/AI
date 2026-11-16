@@ -3,14 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  {
   "scripts": {
-    "start": "node index.js"
+    "dev": "vite",
+    "start": "vite --host 0.0.0.0 --port $PORT",
+    "deploy:self": "bun run ./scripts/self-deploy.ts",
+    "compass:deploy": "bun run ./scripts/compass-deploy.ts"
   }
 }
-    "dev": "vite",
-    "deploy:self": "bun run ./scripts/self-deploy.ts",
-    "compass:deploy": "bun run ./scripts/compass-deploy.ts",
     "fetch:abi": "bun run ./scripts/fetch-abi.ts",
     "lint": "oxlint --type-aware src scripts agent --fix; s=$?; oxlint --fix .; exit $((s>0?s:$?))",
     "typecheck": "tsc --noEmit && tsc --noEmit -p agent/tsconfig.json",
