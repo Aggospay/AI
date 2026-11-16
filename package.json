@@ -4,26 +4,26 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "vite --host 0.0.0.0 --port $PORT",
-    "deploy:self": "bun run ./scripts/self-deploy.ts",
-    "compass:deploy": "bun run ./scripts/compass-deploy.ts"
-  }
+  "dev": "vite",
+  "build": "vite build",
+  "start": "vite preview --host 0.0.0.0 --port $PORT"
 }
-    "fetch:abi": "bun run ./scripts/fetch-abi.ts",
-    "lint": "oxlint --type-aware src scripts agent --fix; s=$?; oxlint --fix .; exit $((s>0?s:$?))",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p agent/tsconfig.json",
-    "check": "bash scripts/check.sh",
-    "contracts:build": "forge build",
-    "contracts:test": "forge test",
-    "agent:dev": "bun --watch run agent/src/main.ts",
-    "agent:start": "bun run agent/src/main.ts",
-    "agent:test": "bun test agent/test",
-    "agent:setup": "bun run agent/src/setup.ts",
-    "agent:rivals": "bun run agent/src/rivals/run.ts",
-    "agent:smoke": "bun run scripts/smoke-api.ts",
-    "agent:ui-check": "bun run scripts/ui-render-check.tsx"
-  },
+  "deploy:self": "bun run ./scripts/self-deploy.ts",
+  "compass:deploy": "bun run ./scripts/compass-deploy.ts",
+  "fetch:abi": "bun run ./scripts/fetch-abi.ts",
+  "lint": "oxlint --type-aware src scripts agent --fix; s=$?; oxlint --fix .; exit $((s>0?s:$?))",
+  "typecheck": "tsc --noEmit && tsc --noEmit -p agent/tsconfig.json",
+  "check": "bash scripts/check.sh",
+  "contracts:build": "forge build",
+  "contracts:test": "forge test",
+  "agent:dev": "bun --watch run agent/src/main.ts",
+  "agent:start": "bun run agent/src/main.ts",
+  "agent:test": "bun test agent/test",
+  "agent:setup": "bun run agent/src/setup.ts",
+  "agent:rivals": "bun run agent/src/rivals/run.ts",
+  "agent:smoke": "bun run scripts/smoke-api.ts",
+  "agent:ui-check": "bun run scripts/ui-render-check.tsx"
+},
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.19.2",
     "@circle-fin/app-kit": "^1.18.0",
