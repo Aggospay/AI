@@ -1,6 +1,6 @@
 # NFT Trading Agent
 
-An autonomous NFT trading agent for Arc Testnet with a live control dashboard. It watches a test NFT marketplace, scores collections, mints and buys only when expected net profit clears your limits, lists what it holds just below the lowest comparable competitor without ever selling below its minimum profitable price, manages offers, and tracks portfolio performance. Paper trading is the default. Mainnet is not supported.
+An autonomous NFT trading agent for Arc Testnet with a live control dashboard. It watches a test NFT marketplace, scores collections, mints and buys only when expected net profit clears your limits, and keeps a durable history of orders and outcomes.
 
 Built with [Arc Studio](https://studio.arc.io)
 
@@ -13,9 +13,9 @@ Built with [Arc Studio](https://studio.arc.io)
 * Enforces your limits: maximum prices, daily and weekly spend, per-collection exposure, liquidity, collection score, allow and block lists, and a global pause.
 * Manual approval mode and fully automated mode, per-strategy switches and an emergency stop.
 * Dashboard: portfolio value, realized and unrealized profit, gas and fees, opportunities, launches, listings, offers, approvals, activity and alerts.
-* Language selector in the dashboard: English, Chinese, Indonesian, Hindi, Spanish, Arabic (right-to-left) and Russian. Your choice is remembered in the browser. Technical text produced by the agent (activity messages, score notes, reasons) stays in English.
+* Language selector in the dashboard: English, Chinese, Indonesian, Hindi, Spanish, Arabic (right-to-left) and Russian.
 
-Features from the original spec that are not built (predictive floors, cross-marketplace arbitrage, whale tracking, adaptive pricing, AI research, trait offers, Ethereum and Base) are listed inside the dashboard.
+Predictive floors, cross-marketplace arbitrage, whale tracking, adaptive pricing, strategy optimization, AI research, trait offers, and multi-chain trading are not yet implemented. Chain-aware RPC selection is groundwork only; see `docs/MULTICHAIN.md` for the live safety boundary and rollout requirements.
 
 ## Tech stack
 
@@ -41,22 +41,22 @@ bun run agent:ui-check # renders every dashboard tab in every language against a
 bun run contracts:test # contract tests
 ```
 
-Docs: `docs/WALLET_SETUP.md`, `docs/DEPLOYMENT.md`, `docs/ARCHITECTURE.md`.
+Docs: `docs/WALLET_SETUP.md`, `docs/DEPLOYMENT.md`, `docs/ARCHITECTURE.md`, `docs/MULTICHAIN.md`.
 
-### Environment variables
+## Environment variables
 
 | Name | Purpose |
 | --- | --- |
-| `CIRCLE_API_KEY` | Circle API key for the agent wallet (needed for live testnet trading) |
-| `CIRCLE_ENTITY_SECRET` | Circle entity secret registered for the account |
-| `AGENT_ADMIN_TOKEN` | Token the dashboard uses to talk to the worker (created on first start) |
+| `CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET` | Arc Testnet live execution only |
+| `AGENT_ADMIN_TOKEN` | Token the dashboard uses; created on first start if missing |
+| `AGENT_CHAIN_ID` | Chain facts ID; defaults to Arc Testnet (5042002). Non-Arc is RPC/read-only groundwork only |
 | `AGENT_PORT` | Worker port, default 8787 |
 | `AGENT_DB_PATH` | SQLite file location |
-| `AGENT_START_BLOCK` | Block the indexer starts from (the factory deployment block) |
-| `AGENT_WS_URL` | Optional WebSocket endpoint for faster head notifications |
+| `AGENT_START_BLOCK` | Arc Testnet block the indexer starts from |
+| `AGENT_WS_URL` | Optional Arc Testnet WebSocket endpoint |
 | `AGENT_PAPER_BALANCE` | Starting balance for paper trading, in USDC base units |
-| `AGENT_LOG_LEVEL` | `debug`, `info`, `warn` or `error` |
-| `AGENT_DASHBOARD_DIR` | Optional folder with the built dashboard for the worker to serve |
-| `VITE_FACTORY_ADDRESS`, `VITE_MARKET_ADDRESS` | Deployed contract addresses (public) |
-| `RPC_URL_Arc_Testnet` | Your own RPC endpoint for Arc Testnet (recommended for 24/7) |
-| `RPC_PROXY_BASE_URL`, `RPC_PROXY_TOKEN`, `RPC_PROXY_CHAINS` | Provisioned by Arc Studio. Optional elsewhere |
+| `VITE_FACTORY_ADDRESS`, `VITE_MARKET_ADDRESS` | Arc Testnet deployed contract addresses only |
+| `RPC_URL_Arc_Testnet` | Your Arc Testnet RPC endpoint |
+| `RPC_URL_Ethereum`, `RPC_URL_Base` | Optional chain-specific RPC endpoints; public facts endpoints are fallback |
+| `AGENT_FACTORY_ADDRESS_<chainId>`, `AGENT_MARKET_ADDRESS_<chainId>` | Optional chain-scoped addresses; only set after compatible deployment and independent review |
+| `RPC_PROXY_BASE_URL`, `RPC_PROXY_TOKEN`, `RPC_PROXY_CHAINS` | Optional Arc Studio RPC proxy settings |

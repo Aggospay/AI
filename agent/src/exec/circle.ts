@@ -35,7 +35,11 @@ export class CircleExecutor implements Executor {
     private db: Db,
     private chain: Client,
     private walletIdFor: () => string | null,
+    private chainId: number = ARC_TESTNET_CHAIN_ID,
   ) {
+    if (chainId !== ARC_TESTNET_CHAIN_ID) {
+      throw new Error('Circle live execution is enabled only on Arc Testnet until each chain adapter and wallet route is reviewed')
+    }
     this.circle = makeCircleClient()
   }
 
@@ -74,7 +78,7 @@ export class CircleExecutor implements Executor {
       // Never trust the provider state alone: confirm success on chain.
       const receipt = await this.chain.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 })
       if (receipt.status !== 'success') return { ok: false, txHash, error: 'transaction reverted onchain' }
-      const gasCost = gasCostUsdc(ARC_TESTNET_CHAIN_ID, receipt.gasUsed, receipt.effectiveGasPrice)
+      const gasCost = gasCostUsdc(this.chainId, receipt.gasUsed, receipt.effectiveGasPrice)
       return { ok: true, txHash, gasUsed: receipt.gasUsed, gasCostUsdc: gasCost }
     } catch (e) {
       return { ok: false, error: errMessage(e) }

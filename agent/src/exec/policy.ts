@@ -1,14 +1,8 @@
-/**
- * Signing allowlist. The agent can only ever produce calls built here: fixed contracts, fixed
- * function signatures, parameters validated against the indexed state. There is no code path that
- * signs arbitrary calldata, arbitrary messages, or typed data.
- */
-import { isAddress } from 'viem'
+import { getUsdc } from '../../../src/onchain-facts'
 import type { EnvConfig, Settings } from '../config'
 import type { Db } from '../db'
 import type { Action, ActionKind } from '../types'
 import { lc } from '../util'
-import { USDC_ADDRESS } from '../chain/clients'
 
 export class PolicyError extends Error {
   constructor(message: string) {
@@ -45,7 +39,7 @@ const need = (p: Record<string, string | boolean>, name: string): string => {
 }
 
 function verifiedCollection(db: Db, address: string): string {
-  if (!isAddress(address)) throw new PolicyError('collection is not an address')
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new PolicyError('collection is not an address')
   const row = db.query('SELECT 1 FROM collections WHERE address = ? AND verified = 1').get(lc(address))
   if (!row) throw new PolicyError('collection is not a registered, verified collection')
   return lc(address)
@@ -53,7 +47,7 @@ function verifiedCollection(db: Db, address: string): string {
 
 /** Validates an action against the allowlist and returns the exact call to sign. Throws PolicyError otherwise. */
 export function prepareCall(action: Action, db: Db, env: EnvConfig, settings: Settings): PreparedCall {
-  if (!env.market || !env.factory) throw new PolicyError('market and factory addresses are not configured')
+  if (!env.market || !env.factory) throw new PolicyError('market and factory addresses are not configured for this chain')
   const market = env.market
   const p = action.params
   const sig = SIGNATURES[action.kind]
@@ -68,7 +62,6 @@ export function prepareCall(action: Action, db: Db, env: EnvConfig, settings: Se
     }
     case 'approveCollection': {
       const collection = verifiedCollection(db, String(p.collection))
-      // Only ever approve the market, never an arbitrary operator.
       return {
         contractAddress: collection as `0x${string}`,
         abiFunctionSignature: sig,
@@ -78,11 +71,13 @@ export function prepareCall(action: Action, db: Db, env: EnvConfig, settings: Se
     case 'approveUsdc': {
       const spender = String(p.spender)
       const amount = need(p, 'amount')
+      const usdc = getUsdc(env.chainId)?.address
+      if (!usdc) throw new PolicyError(`USDC is not configured on chain ${env.chainId}`)
       const isMarket = lc(spender) === lc(market)
       const isCollection = !isMarket && !!db.query('SELECT 1 FROM collections WHERE address = ? AND verified = 1').get(lc(spender))
       if (!isMarket && !isCollection) throw new PolicyError('USDC approval spender is not the market or a verified collection')
       if (BigInt(amount) > settings.risk.maxExposurePerCollection) throw new PolicyError('USDC approval exceeds the per-collection exposure cap')
-      return { contractAddress: USDC_ADDRESS, abiFunctionSignature: sig, abiParameters: [spender, amount] }
+      return { contractAddress: usdc as `0x${string}`, abiFunctionSignature: sig, abiParameters: [spender, amount] }
     }
     case 'buy':
       return {
