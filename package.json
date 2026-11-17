@@ -21,6 +21,7 @@
     "agent:setup": "bun run agent/src/setup.ts",
     "agent:rivals": "bun run agent/src/rivals/run.ts",
     "agent:mock-market": "bun run agent/src/mock-market/server.ts",
+    "agent:opensea-readonly": "bun run agent/src/mock-market/opensea-readonly-server.ts",
     "agent:smoke": "bun run scripts/smoke-api.ts",
     "agent:ui-check": "bun run scripts/ui-render-check.tsx"
   },
