@@ -6,8 +6,8 @@ import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createApp } from './app'
-import { chainFacts, makeClient } from './chain/clients'
-import { ARC_TESTNET_CHAIN_ID, loadEnv } from './config'
+import { makeClient } from './chain/clients'
+import { loadEnv } from './config'
 import { logActivity, openDb } from './db'
 import { logger } from './log'
 import { startServer } from './server'
@@ -17,7 +17,7 @@ const log = logger('main')
 
 async function main() {
   const startedAt = Date.now()
-  const env = loadEnv(chainFacts.rpcUrls)
+  const env = loadEnv()
   if (!process.env.AGENT_ADMIN_TOKEN) {
     // First boot: create an admin token and store it in .env. It is never printed.
     const token = randomBytes(24).toString('hex')
@@ -32,13 +32,14 @@ async function main() {
   const chainId = await client.getChainId().catch((e: unknown) => {
     throw new Error(`RPC unreachable: ${errMessage(e)}`)
   })
-  if (chainId !== ARC_TESTNET_CHAIN_ID) throw new Error(`RPC reports chain ${chainId}, expected ${ARC_TESTNET_CHAIN_ID}. Refusing to start.`)
+  if (chainId !== env.chainId) throw new Error(`RPC reports chain ${chainId}, expected ${env.chainId}. Refusing to start.`)
 
   const app = createApp(db, env, client)
-  if (!env.market || !env.factory) log.warn('VITE_FACTORY_ADDRESS / VITE_MARKET_ADDRESS not set: the agent will idle until contracts are deployed')
+  if (!env.market || !env.factory) log.warn('Factory / market addresses are not configured for this chain: trading will remain disabled')
+  if (env.chainId !== 5042002) log.warn('Non-Arc chain selected: worker is RPC/read-only groundwork only; no marketplace adapter or live execution is enabled')
   await app.ctx.gas.refresh(0).catch((e: unknown) => log.warn('gas price unavailable at boot', { error: errMessage(e) }))
   app.ctx.exec.recover()
-  logActivity(db, { strategy: 'system', message: `Worker started in ${app.getSettings().mode} mode (${app.getSettings().approvalMode} approval)` })
+  logActivity(db, { strategy: 'system', message: `Worker started on chain ${env.chainId} in ${app.getSettings().mode} mode (${app.getSettings().approvalMode} approval)` })
 
   app.registerTasks()
   const indexerDone = app.ctx.indexer.run()

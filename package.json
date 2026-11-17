@@ -20,6 +20,7 @@
     "agent:test": "bun test agent/test",
     "agent:setup": "bun run agent/src/setup.ts",
     "agent:rivals": "bun run agent/src/rivals/run.ts",
+    "agent:mock-market": "bun run agent/src/mock-market/server.ts",
     "agent:smoke": "bun run scripts/smoke-api.ts",
     "agent:ui-check": "bun run scripts/ui-render-check.tsx"
   },
@@ -34,7 +35,7 @@
     "@openzeppelin/contracts": "5.6.1",
     "@tanstack/react-query": "^5.62.7",
     "@web3icons/react": "^4.0.0",
-    "clsx": "^2.1.1",
+    "clsx": "^2.1.0",
     "connectkit": "^1.9.2",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",

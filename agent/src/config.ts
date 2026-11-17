@@ -1,13 +1,16 @@
 /**
  * Runtime settings. Stored as JSON in SQLite (amounts as base-unit decimal strings),
  * validated with zod, exposed to code as bigint. Defaults are conservative: paper mode,
- * manual approval, small limits. All money is USDC in the 6-decimal ERC-20 view.
+ * manual approval, small limits. Trading strategy accounting is denominated in USDC.
  */
 import { z } from 'zod'
+import { ONCHAIN_CHAINS, requireChain } from '../../src/onchain-facts'
 
 export const ARC_TESTNET_CHAIN_ID = 5042002
-/** The only chain this build will trade on. Mainnet chain IDs are rejected on purpose. */
-export const SUPPORTED_CHAIN_IDS: readonly number[] = [ARC_TESTNET_CHAIN_ID]
+/** Chains with registered USDC facts can be selected for RPC/read-only groundwork. */
+export const SUPPORTED_CHAIN_IDS: readonly number[] = ONCHAIN_CHAINS
+  .filter((chain) => chain.usdc !== undefined)
+  .map((chain) => chain.chainId)
 
 export const PRICE_TICK = 1000n // 0.001 USDC, mirrors NftMarket.PRICE_TICK
 export const BPS = 10_000n
@@ -140,28 +143,49 @@ export interface EnvConfig {
 const addr = (v: string | undefined): `0x${string}` | undefined =>
   v && /^0x[0-9a-fA-F]{40}$/.test(v) ? (v as `0x${string}`) : undefined
 
-export function loadEnv(rpcUrlsFromFacts: string[]): EnvConfig {
-  const chainId = Number(process.env.AGENT_CHAIN_ID ?? ARC_TESTNET_CHAIN_ID)
-  if (!SUPPORTED_CHAIN_IDS.includes(chainId)) {
-    throw new Error(`Chain ${chainId} is not supported. This build trades on Arc Testnet only.`)
+const envSuffix = (name: string): string => name.replace(/[^a-zA-Z0-9]+/g, '_')
+
+/** Load one network at a time. Market contract addresses are chain-specific to prevent cross-chain reuse. */
+export function loadEnv(rpcUrlsFromFacts: string[] = []): EnvConfig {
+  const rawChainId = process.env.AGENT_CHAIN_ID ?? String(ARC_TESTNET_CHAIN_ID)
+  const chainId = Number(rawChainId)
+  if (!Number.isSafeInteger(chainId) || !SUPPORTED_CHAIN_IDS.includes(chainId)) {
+    throw new Error(`Chain ${rawChainId} is not configured for this worker. Select a chain with registered USDC facts.`)
   }
+  const facts = requireChain(chainId)
   const urls: string[] = []
-  const proxyChains = (process.env.RPC_PROXY_CHAINS ?? '').split(',')
-  const keyed = process.env['RPC_URL_Arc_Testnet']
+  const suffix = envSuffix(facts.name)
+  const keyed = process.env[`RPC_URL_${suffix}`]
   if (keyed) urls.push(keyed)
-  if (process.env.RPC_PROXY_BASE_URL && process.env.RPC_PROXY_TOKEN && proxyChains.includes('Arc_Testnet')) {
+
+  // Arc Studio's RPC proxy is currently provisioned only for Arc Testnet.
+  const proxyChains = (process.env.RPC_PROXY_CHAINS ?? '').split(',').map((x) => x.trim())
+  if (
+    chainId === ARC_TESTNET_CHAIN_ID && process.env.RPC_PROXY_BASE_URL && process.env.RPC_PROXY_TOKEN &&
+    proxyChains.includes('Arc_Testnet')
+  ) {
     urls.push(`${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`)
   }
-  for (const u of rpcUrlsFromFacts) if (!urls.includes(u)) urls.push(u)
+  const factUrls = chainId === ARC_TESTNET_CHAIN_ID && rpcUrlsFromFacts.length > 0 ? rpcUrlsFromFacts : facts.rpcUrls
+  for (const u of [...factUrls, ...facts.rpcUrls]) if (!urls.includes(u)) urls.push(u)
+
+  const isArcTestnet = chainId === ARC_TESTNET_CHAIN_ID
   return {
     chainId,
     dbPath: process.env.AGENT_DB_PATH ?? 'agent/data/agent.sqlite',
     port: Number(process.env.AGENT_PORT ?? 8787),
     adminToken: process.env.AGENT_ADMIN_TOKEN,
-    factory: addr(process.env.VITE_FACTORY_ADDRESS),
-    market: addr(process.env.VITE_MARKET_ADDRESS),
+    // Existing VITE_* addresses are Arc Testnet deployment settings, never defaults for other chains.
+    factory: addr(isArcTestnet ? process.env.VITE_FACTORY_ADDRESS : process.env[`AGENT_FACTORY_ADDRESS_${chainId}`]),
+    market: addr(isArcTestnet ? process.env.VITE_MARKET_ADDRESS : process.env[`AGENT_MARKET_ADDRESS_${chainId}`]),
     startBlock: process.env.AGENT_START_BLOCK ? BigInt(process.env.AGENT_START_BLOCK) : undefined,
-    wsUrl: process.env.AGENT_WS_URL,
+    wsUrl: process.env[`AGENT_WS_URL_${chainId}`] ?? (isArcTestnet ? process.env.AGENT_WS_URL : undefined),
     rpcUrls: urls,
   }
+}
+
+/** Network-specific addresses are read from Arc Studio's generated facts. */
+export function chainUsdcAddress(chainId: number): `0x${string}` | undefined {
+  const address = requireChain(chainId).usdc?.address
+  return address as `0x${string}` | undefined
 }
