@@ -18,12 +18,17 @@ Autonomous NFT trading agent on Arc Testnet: a Bun worker (`agent/`, SQLite stat
 - `docs/` ARCHITECTURE, WALLET_SETUP, DEPLOYMENT
 
 ### Rules for future edits
-- UI text lives in `src/i18n/en.ts` and the six other locale files (`zh id hi es ar ru`). Add a key to `en.ts` first; the other files then fail typecheck until they have it. Use `t('key')` from `useI18n()`, never a literal string in a component. Keep the `ENABLE TESTNET TRADING` phrase untranslated (the API compares it). Use logical Tailwind classes (`ms-`, `me-`, `text-start`) so Arabic renders right-to-left. `agent/test/i18n.test.ts` checks key and placeholder parity.
+- UI text lives in `src/i18n/en.ts` and the six other locale files (`zh id hi es ar ru`). Add a key to `en.ts` first; the other files then fail typecheck until they have it. Use `t('key')` from `useI18n()`, never a literal string in a component. Keep the `ENABLE TESTNET TRADING` phrase untranslated (the API compares it). Use logical Tailwind classes (`ms-`, `me-`, `text-start`) so Arabic renders right-to-left.
 - Money is bigint USDC base units (6 decimals). Gas converts once via `gasCostUsdc`. Never `parseUnits(…, 6)` on a money path.
 - Any new onchain call must be added to `agent/src/exec/policy.ts`. Never sign arbitrary calldata or messages.
 - Every acquisition passes `checkRisk`. Do not add a path around it.
 - Fair value must only use `cleanSales` output (wash filter).
 - Keep the min-profitable-price gas budget logic in `strategies/repricer.ts` (planned sell gas is a budget, not an ever-growing cost).
+
+### Mock marketplace safety
+- `agent/src/mock-market/` is isolated fixture-only code. It must not import chain, wallet, RPC, signing, or production execution modules.
+- Its action methods must remain rejected mock results or `NotImplementedException`; no stateful trades, transactions, approvals, or wallet interaction.
+- Keep the production `agent/src/exec/policy.ts` and transaction pipeline unchanged when working on the mock adapter.
 
 ### Deployed contracts
 Arc Testnet (chain 5042002), deployed 2026-11-15:
@@ -54,7 +59,7 @@ Arc Testnet (chain 5042002), deployed 2026-11-15:
 
 - Starter apps already ship `getShareBase`, `buildShareLink` and `installShareSync` in `src/lib/share.ts`; import them instead of rewriting them.
 - Keep shareable state in the URL path or query, not in the `#fragment`.
-- Never put a secret (private key, claim secret, seed phrase, session token, API key) in the URL path or query, encoded or not: every in-app path and query is mirrored to the visitor's studio.arc.io address bar and browser history and reaches servers. A bearer claim secret goes only in the `#fragment` appended to the share link (`` `${await buildShareLink('/claim')}#${secret}` ``) and is read from `location.hash` on load. A link to the app's own share URL shown inside the app must be copy-only or open in a new tab with `target="_blank" rel="noopener noreferrer"`.
+- Never put a secret (private key, claim secret, seed phrase, session token, API key) in the URL path or query, encoded or not.
 - Build every link a user copies or sends with `buildShareLink()` from `src/lib/share.ts`.
 - Keep the `installShareSync()` call in `src/main.tsx` when editing it; it keeps the Studio address bar in step with in-app navigation.
 - Navigate inside the app with relative links.
@@ -64,7 +69,8 @@ Arc Testnet (chain 5042002), deployed 2026-11-15:
 ```bash
 bun install
 bun run dev            # dashboard
-bun run agent:start    # worker (needs VITE_FACTORY_ADDRESS / VITE_MARKET_ADDRESS to trade)
-bun run check          # lint + typecheck for src/, scripts/, agent/
+bun run agent:start    # worker
+bun run agent:mock-market # isolated mock marketplace API on port 8788
+bun run check          # lint + typecheck
 bun run agent:test
 ```
